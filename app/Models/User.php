@@ -20,8 +20,6 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
-    protected $connection = 'sqlsrv_malang';
-
     protected $table = 'users';
 
     protected $fillable = [

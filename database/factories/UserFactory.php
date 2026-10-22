@@ -28,9 +28,8 @@ class UserFactory extends Factory
             'pegawai_id' => null,
             'username' => fake()->unique()->userName(),
             'password' => static::$password ??= Hash::make('password'),
-            'role' => fake()->randomElement(['kasir', 'admin_cabang']),
+            'role' => fake()->randomElement(['kasir', 'admin_cabang', 'admin_pusat']),
             'remember_token' => Str::random(10),
         ];
     }
-
 }

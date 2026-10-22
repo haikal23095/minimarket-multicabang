@@ -9,12 +9,14 @@ class Transaksi extends Model
 {
     use HasFactory;
 
-    protected $connection = 'sqlsrv_malang';
     protected $table = 'Transaksi';
+
     protected $primaryKey = 'id_transaksi';
 
     public $incrementing = false;
+
     protected $keyType = 'string';
+
     public $timestamps = false;
 
     protected $fillable = [

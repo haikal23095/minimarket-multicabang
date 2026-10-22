@@ -6,13 +6,15 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    protected $connection = 'sqlsrv_malang';
-
     public function up(): void
     {
-        $schema = Schema::connection($this->connection);
+        $schema = Schema::connection(env('DB_CONNECTION'));
 
         foreach (['Cabang', 'Kategori', 'Produk'] as $tableName) {
+            if (! $schema->hasTable($tableName)) {
+                continue;
+            }
+
             if (! $schema->hasColumn($tableName, 'created_at')) {
                 $schema->table($tableName, function (Blueprint $table) {
                     $table->dateTime('created_at')->nullable();
@@ -29,9 +31,13 @@ return new class extends Migration
 
     public function down(): void
     {
-        $schema = Schema::connection($this->connection);
+        $schema = Schema::connection(env('DB_CONNECTION'));
 
         foreach (['Cabang', 'Kategori', 'Produk'] as $tableName) {
+            if (! $schema->hasTable($tableName)) {
+                continue;
+            }
+
             if ($schema->hasColumn($tableName, 'updated_at')) {
                 $schema->table($tableName, function (Blueprint $table) {
                     $table->dropColumn('updated_at');

@@ -9,12 +9,13 @@ class Kategori extends Model
 {
     use HasFactory;
 
-    protected $connection = 'sqlsrv_malang';
     protected $table = 'Kategori';
+
     protected $primaryKey = 'id_kategori';
 
     // Karena id_kategori bernilai string (contoh: KTG001)
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [

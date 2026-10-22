@@ -9,11 +9,12 @@ class Produk extends Model
 {
     use HasFactory;
 
-    protected $connection = 'sqlsrv_malang';
     protected $table = 'Produk';
+
     protected $primaryKey = 'id_produk';
 
     public $incrementing = false; // Beritahu Eloquent bahwa PK bukan auto-increment integer
+
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -28,6 +29,7 @@ class Produk extends Model
     {
         return $this->belongsTo(Kategori::class, 'id_kategori', 'id_kategori');
     }
+
     // Relasi ke Stok
     public function stok()
     {

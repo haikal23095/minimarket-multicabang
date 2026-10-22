@@ -6,17 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    protected $connection = 'sqlsrv_malang';
-
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        Schema::connection($this->connection)->create('Kategori', function (Blueprint $table) {
-            $table->string('id_kategori', 20)->primary();
-            $table->string('nama_kategori', 100);
-        });
+        $schema = Schema::connection(env('DB_CONNECTION'));
+
+        if (! $schema->hasTable('Kategori')) {
+            $schema->create('Kategori', function (Blueprint $table) {
+                $table->string('id_kategori', 20)->primary();
+                $table->string('nama_kategori', 100);
+            });
+        }
     }
 
     /**
@@ -24,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::connection($this->connection)->dropIfExists('Kategori');
+        Schema::connection(env('DB_CONNECTION'))->dropIfExists('Kategori');
     }
 };

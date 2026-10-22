@@ -6,18 +6,24 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    protected $connection = 'sqlsrv_malang';
-
     public function up(): void
     {
-        Schema::connection($this->connection)->create('Pegawai', function (Blueprint $table) {
-            $table->id('id_pegawai');
-            $table->string('nama_pegawai', 100);
-            $table->string('jabatan', 50);
-            $table->string('no_hp', 20)->nullable();
-            $table->text('alamat')->nullable();
-            $table->timestamps();
-        });
+        if (! in_array(env('APP_NODE', 'malang'), ['malang', 'surabaya'], true)) {
+            return;
+        }
+
+        $schema = Schema::connection(env('DB_CONNECTION'));
+
+        if (! $schema->hasTable('Pegawai')) {
+            $schema->create('Pegawai', function (Blueprint $table) {
+                $table->id('id_pegawai');
+                $table->string('nama_pegawai', 100);
+                $table->string('jabatan', 50);
+                $table->string('no_hp', 20)->nullable();
+                $table->text('alamat')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**
@@ -25,6 +31,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::connection($this->connection)->dropIfExists('Pegawai');
+        if (in_array(env('APP_NODE', 'malang'), ['malang', 'surabaya'], true)) {
+            Schema::connection(env('DB_CONNECTION'))->dropIfExists('Pegawai');
+        }
     }
 };

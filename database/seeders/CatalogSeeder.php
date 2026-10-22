@@ -10,18 +10,39 @@ use Illuminate\Database\Seeder;
 
 class CatalogSeeder extends Seeder
 {
-    /**
-     * Seed the application's branch and product catalog.
-     */
     public function run(): void
     {
-        Cabang::updateOrCreate(
-            ['id_cabang' => 'MLG'],
-            [
+        $node = env('APP_NODE', 'malang');
+        $nodeToBranch = [
+            'malang' => 'MLG',
+            'surabaya' => 'SBY',
+        ];
+
+        $branches = [
+            'MLG' => [
                 'nama_cabang' => 'Minimarket Malang',
                 'alamat' => 'Jl. Soekarno Hatta, Malang',
             ],
-        );
+            'SBY' => [
+                'nama_cabang' => 'Minimarket Surabaya',
+                'alamat' => 'Jl. Tunjungan, Surabaya',
+            ],
+        ];
+
+        if (! in_array($node, ['pusat', 'malang', 'surabaya'], true)) {
+            throw new \InvalidArgumentException("APP_NODE tidak dikenal: {$node}");
+        }
+
+        $branchIds = $node === 'pusat'
+            ? array_keys($branches)
+            : [$nodeToBranch[$node]];
+
+        foreach ($branchIds as $branchId) {
+            Cabang::updateOrCreate(
+                ['id_cabang' => $branchId],
+                $branches[$branchId],
+            );
+        }
 
         $categories = [
             'KTG001' => 'Minuman',
@@ -51,13 +72,12 @@ class CatalogSeeder extends Seeder
                 ],
             );
 
-            Stok::firstOrCreate(
-                [
-                    'id_cabang' => 'MLG',
-                    'id_produk' => $product['id_produk'],
-                ],
-                ['jumlah_stok' => $product['jumlah_stok']],
-            );
+            if ($node !== 'pusat') {
+                Stok::firstOrCreate(
+                    ['id_cabang' => $branchIds[0], 'id_produk' => $product['id_produk']],
+                    ['jumlah_stok' => $product['jumlah_stok']],
+                );
+            }
         }
     }
 }

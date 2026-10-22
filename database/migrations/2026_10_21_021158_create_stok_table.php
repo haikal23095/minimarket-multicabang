@@ -6,17 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    protected $connection = 'sqlsrv_malang';
-
     public function up(): void
     {
-        Schema::connection($this->connection)->create('Stok', function (Blueprint $table) {
-            $table->string('id_cabang', 20);
-            $table->string('id_produk', 20);
-            $table->integer('jumlah_stok')->default(0);
-            $table->primary(['id_cabang', 'id_produk']);
-            $table->foreign('id_produk')->references('id_produk')->on('Produk')->cascadeOnDelete();
-        });
+        if (! in_array(env('APP_NODE', 'malang'), ['malang', 'surabaya'], true)) {
+            return;
+        }
+
+        $schema = Schema::connection(env('DB_CONNECTION'));
+
+        if (! $schema->hasTable('Stok')) {
+            $schema->create('Stok', function (Blueprint $table) {
+                $table->string('id_cabang', 10);
+                $table->string('id_produk', 20);
+                $table->integer('jumlah_stok')->default(0);
+                $table->primary(['id_cabang', 'id_produk']);
+                $table->foreign('id_produk')->references('id_produk')->on('Produk')->cascadeOnDelete();
+            });
+        }
     }
 
     /**
@@ -24,6 +30,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::connection($this->connection)->dropIfExists('Stok');
+        if (in_array(env('APP_NODE', 'malang'), ['malang', 'surabaya'], true)) {
+            Schema::connection(env('DB_CONNECTION'))->dropIfExists('Stok');
+        }
     }
 };

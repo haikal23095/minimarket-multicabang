@@ -6,19 +6,30 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    protected $connection = 'sqlsrv_malang';
-
     public function up(): void
     {
-        Schema::connection($this->connection)->create('users', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('pegawai_id')->nullable()->constrained('Pegawai', 'id_pegawai')->nullOnDelete();
-            $table->string('username', 50)->unique();
-            $table->string('password');
-            $table->enum('role', ['kasir', 'admin_cabang'])->default('kasir');
-            $table->rememberToken();
-            $table->timestamps();
-        });
+        $node = env('APP_NODE', 'malang');
+        $schema = Schema::connection(env('DB_CONNECTION'));
+
+        if (! $schema->hasTable('users')) {
+            $schema->create('users', function (Blueprint $table) use ($node) {
+                $table->id();
+                $table->foreignId('pegawai_id')->nullable();
+
+                if (in_array($node, ['malang', 'surabaya'], true)) {
+                    $table->foreign('pegawai_id')
+                        ->references('id_pegawai')
+                        ->on('Pegawai')
+                        ->nullOnDelete();
+                }
+
+                $table->string('username', 50)->unique();
+                $table->string('password');
+                $table->enum('role', ['kasir', 'admin_cabang', 'admin_pusat'])->default('kasir');
+                $table->rememberToken();
+                $table->timestamps();
+            });
+        }
     }
 
     /**
@@ -26,6 +37,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::connection($this->connection)->dropIfExists('users');
+        Schema::connection(env('DB_CONNECTION'))->dropIfExists('users');
     }
 };

@@ -9,8 +9,8 @@ class Pegawai extends Model
 {
     use HasFactory;
 
-    protected $connection = 'sqlsrv_malang';
     protected $table = 'Pegawai';
+
     protected $primaryKey = 'id_pegawai';
 
     protected $fillable = [

@@ -9,9 +9,10 @@ class DetailTransaksi extends Model
 {
     use HasFactory;
 
-    protected $connection = 'sqlsrv_malang';
     protected $table = 'DetailTransaksi';
+
     protected $primaryKey = 'id_detail';
+
     public $timestamps = false;
 
     protected $fillable = [

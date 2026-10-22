@@ -6,18 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    protected $connection = 'sqlsrv_malang';
-
     public function up(): void
     {
-        $schema = Schema::connection($this->connection);
+        $schema = Schema::connection(env('DB_CONNECTION'));
         $relations = [
             ['Produk', 'id_kategori', 'Kategori', 'id_kategori', 'fk_produk_id_kategori'],
-            ['Stok', 'id_cabang', 'Cabang', 'id_cabang', 'fk_stok_id_cabang'],
-            ['Transaksi', 'id_cabang', 'Cabang', 'id_cabang', 'fk_transaksi_id_cabang'],
         ];
 
+        if (in_array(env('APP_NODE', 'malang'), ['malang', 'surabaya'], true)) {
+            $relations[] = ['Stok', 'id_cabang', 'Cabang', 'id_cabang', 'fk_stok_id_cabang'];
+            $relations[] = ['Transaksi', 'id_cabang', 'Cabang', 'id_cabang', 'fk_transaksi_id_cabang'];
+        }
+
         foreach ($relations as [$tableName, $column, $foreignTable, $foreignColumn, $constraint]) {
+            if (! $schema->hasTable($tableName) || ! $schema->hasTable($foreignTable)) {
+                continue;
+            }
+
             $exists = collect($schema->getForeignKeys($tableName))->contains(
                 fn (array $foreignKey): bool => $foreignKey['columns'] === [$column]
                     && strcasecmp($foreignKey['foreign_table'], $foreignTable) === 0
@@ -34,14 +39,21 @@ return new class extends Migration
 
     public function down(): void
     {
-        $schema = Schema::connection($this->connection);
+        $schema = Schema::connection(env('DB_CONNECTION'));
         $constraints = [
             ['Produk', 'fk_produk_id_kategori'],
-            ['Stok', 'fk_stok_id_cabang'],
-            ['Transaksi', 'fk_transaksi_id_cabang'],
         ];
 
+        if (in_array(env('APP_NODE', 'malang'), ['malang', 'surabaya'], true)) {
+            $constraints[] = ['Stok', 'fk_stok_id_cabang'];
+            $constraints[] = ['Transaksi', 'fk_transaksi_id_cabang'];
+        }
+
         foreach ($constraints as [$tableName, $constraint]) {
+            if (! $schema->hasTable($tableName)) {
+                continue;
+            }
+
             $exists = collect($schema->getForeignKeys($tableName))
                 ->contains(fn (array $foreignKey): bool => $foreignKey['name'] === $constraint);
 

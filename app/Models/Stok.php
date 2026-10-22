@@ -9,10 +9,12 @@ class Stok extends Model
 {
     use HasFactory;
 
-    protected $connection = 'sqlsrv_malang';
     protected $table = 'Stok';
+
     protected $primaryKey = ['id_cabang', 'id_produk'];
+
     public $incrementing = false;
+
     public $timestamps = false;
 
     protected $fillable = [
