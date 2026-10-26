@@ -15,6 +15,14 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'node' => env('APP_NODE', 'malang'),
+
+    'branch' => match (env('APP_NODE', 'malang')) {
+        'malang' => ['id' => 'MLG', 'name' => 'Malang'],
+        'surabaya' => ['id' => 'SBY', 'name' => 'Surabaya'],
+        default => null,
+    },
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

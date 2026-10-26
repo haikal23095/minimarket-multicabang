@@ -1,38 +1,107 @@
 # Minimarket Multi-Cabang
 
-Aplikasi web kasir (POS) minimarket berbasis Laravel. Repository ini saat ini berisi fondasi login, katalog produk, stok, dan pencatatan transaksi untuk cabang Malang. Konfigurasi koneksi database pusat dan cabang lain sudah tersedia, tetapi sinkronisasi pusat–cabang belum diimplementasikan.
+Aplikasi web POS minimarket berbasis Laravel 13 dan Microsoft SQL Server. Satu codebase dapat dijalankan sebagai node `pusat`, `malang`, atau `surabaya`, dipilih melalui `APP_NODE` dan koneksi database aktif melalui `DB_CONNECTION`.
 
-Dokumen ini menjelaskan kondisi aplikasi saat ini, cara menjalankannya di Windows, dan tahapan yang disarankan untuk mencapai sistem multi-cabang yang dapat bekerja saat koneksi terputus dan menyinkronkan data kembali.
+README ini menjadi panduan onboarding dan serah-terima pekerjaan. Sistem masih dalam pengembangan; khususnya transaksi POS dan sinkronisasi pusat–cabang belum siap digunakan untuk operasional produksi.
 
-## Ringkasan fitur saat ini
+## Status implementasi
 
-- Login menggunakan username dan password, dengan role `kasir` dan `admin_cabang`.
-- Kasir dapat melihat produk, membuat keranjang, memasukkan pembayaran, dan mengirim transaksi.
-- Checkout menyimpan header transaksi dan detail barang serta mengurangi stok.
-- Model bisnis yang tersedia: `Cabang`, `Kategori`, `Produk`, `Stok`, `Pegawai`, `User`, `Transaksi`, dan `DetailTransaksi`.
-- Aplikasi menggunakan SQL Server untuk model bisnis. Konfigurasi memiliki koneksi `sqlsrv_pusat`, `sqlsrv_surabaya`, dan `sqlsrv_malang`; semua model saat ini menunjuk langsung ke `sqlsrv_malang`.
-- Terdapat seed data contoh untuk cabang Malang, produk, kategori, pegawai, dan akun.
+### Fitur yang sudah tersedia
+
+- Login berbasis username/password dengan role `kasir`, `admin_cabang`, dan seeder `admin_pusat`.
+- Route POS dibatasi untuk `kasir` dan `admin_cabang`; menu POS admin cabang tetap berada dalam panel admin.
+- Dashboard admin cabang menyesuaikan nama/kode cabang aktif, menampilkan ringkasan stok dan tren omzet/jumlah transaksi 7 hari terakhir.
+- Laba belum dihitung karena skema produk/transaksi saat ini belum menyediakan harga modal.
+- Manajemen stok cabang menampilkan inventaris, pencarian, filter stok, pagination, dan pencatatan stok masuk.
+- Factory tersedia untuk produk dan user; seeder katalog dan user memilih data berdasarkan `APP_NODE`.
+- Migrasi tabel bisnis menggunakan koneksi dari `DB_CONNECTION`; migrasi `Stok`, `Pegawai`, `Transaksi`, dan `DetailTransaksi` hanya berjalan untuk node cabang.
+- Hamburger sidebar tersedia di dashboard, manajemen stok, dan POS admin cabang.
+
+### Hal yang belum selesai
+
+- Sinkronisasi katalog ke cabang masih berupa prototipe satu arah dan belum menjadi alur operasional teruji.
+- Belum ada sinkronisasi transaksi cabang ke pusat, outbox/inbox, retry, idempotensi, atau indikator status sinkronisasi.
+- Dashboard admin pusat dan route `/admin-pusat/dashboard` belum tersedia, meski login role `admin_pusat` diarahkan ke URL tersebut.
+- Checkout POS masih mengandung asumsi Malang dan perlu dibuat node-aware serta divalidasi di server sebelum produksi. Lihat daftar pekerjaan lanjutan.
+
+## Arsitektur database
+
+Atur satu instalasi aplikasi untuk menunjuk tepat ke satu node/database. `APP_NODE` dan `DB_CONNECTION` harus sesuai; nama koneksi ada di `config/database.php`.
+
+| `APP_NODE` | `DB_CONNECTION` | Database |
+| --- | --- | --- |
+| `pusat` | `sqlsrv_pusat` | `db_pusat` |
+| `malang` | `sqlsrv_malang` | `db_cabang_mlg` |
+| `surabaya` | `sqlsrv_surabaya` | `db_cabang_sby` |
+
+### Tabel bisnis
+
+| Node | Tabel bisnis |
+| --- | --- |
+| Pusat | `Cabang`, `Kategori`, `Produk`, `Supplier`, `RekapTransaksi`, `users` |
+| Malang/Surabaya | `Cabang`, `Kategori`, `Produk`, `Pegawai`, `Stok`, `Transaksi`, `DetailTransaksi`, `users` |
+
+Tabel `Stok` hanya dibuat untuk node cabang. Pusat menyimpan katalog dan rekap, bukan jumlah stok fisik cabang. `Cabang`, `Kategori`, dan `Produk` tersedia pada node yang relevan agar aplikasi cabang memiliki salinan katalog lokal.
+
+Laravel juga dapat memiliki tabel internal seperti `migrations`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, dan `failed_jobs`, tergantung migration serta backend session/cache/queue yang digunakan. Tabel internal tersebut bukan bagian dari enam tabel bisnis pusat.
+
+### Seeder demo
+
+`CatalogSeeder` mengisi cabang Malang dan Surabaya di pusat, tetapi hanya cabang lokal pada node cabang. Seeder menambahkan stok hanya pada node cabang. `UserCabangSeeder` membuat akun sesuai node. `TransaksiSeeder` tidak mengisi transaksi contoh di pusat.
+
+Kredensial demo yang dibuat seeder:
+
+| Node | Role | Username | Password awal |
+| --- | --- | --- | --- |
+| Malang | Kasir | `kasir_mlg` | `password123` |
+| Malang | Admin cabang | `admin_mlg` | `password123` |
+| Surabaya | Kasir | `kasir_sby` | `password123` |
+| Surabaya | Admin cabang | `admin_sby` | `password123` |
+| Pusat | Admin pusat | `admin_pusat` | `password123` |
+
+Hanya untuk pengembangan lokal. Ganti password dan terapkan kebijakan kredensial yang aman sebelum deployment; jangan gunakan akun demo untuk produksi.
 
 ## Struktur proyek
 
 | Path | Fungsi |
 | --- | --- |
 | `app/Http/Controllers/AuthController.php` | Login, logout, dan pengalihan berdasarkan role |
-| `app/Http/Controllers/PosController.php` | Daftar produk dan proses checkout |
+| `app/Http/Controllers/PosController.php` | Daftar produk dan proses checkout (masih perlu dibuat node-aware dan diperkuat) |
+| `app/Http/Controllers/AdminCabangController.php` | Dashboard admin cabang |
+| `app/Http/Controllers/StokController.php` | Daftar inventaris cabang dan stok masuk |
+| `app/Services/SyncProductService.php` | Prototipe sinkronisasi katalog pusat ke Malang |
 | `app/Models/` | Model dan relasi data |
-| `routes/web.php` | Route halaman login, POS, checkout, dan logout |
+| `routes/web.php` | Route login, POS/checkout, stok, dashboard cabang, dan logout |
 | `resources/views/auth/` | Halaman login |
 | `resources/views/pos/` | Antarmuka kasir |
+| `resources/views/admin-cabang/` | Dashboard admin cabang |
+| `resources/views/stok/` | Manajemen stok cabang |
 | `database/migrations/` | Definisi dan perubahan skema database |
 | `database/seeders/` | Data contoh awal |
-| `config/database.php` | Koneksi SQLite, SQL Server pusat, serta SQL Server cabang |
+| `config/database.php` | Koneksi SQLite dan SQL Server pusat/cabang |
+| `config/app.php` | Pemetaan `APP_NODE` ke identitas cabang aktif |
 
 ### Alur transaksi saat ini
 
-1. Pengguna yang sudah login membuka `/pos`.
-2. Aplikasi mengambil produk, kategori, dan stok dari database Malang.
-3. Browser mengirim keranjang, total, dan pembayaran ke `/pos/checkout`.
-4. Aplikasi menyimpan transaksi serta detail dan mengurangi stok dalam transaksi database.
+1. Kasir atau admin cabang yang sudah login membuka `/pos`.
+2. Aplikasi merender produk dan stok yang tersedia pada node aktif.
+3. Browser mengirim keranjang dan pembayaran ke `/pos/checkout`.
+4. Controller POS saat ini masih memiliki asumsi koneksi/cabang Malang; alur ini belum aman untuk deployment multi-node sebelum diperbaiki.
+
+### Route dan hak akses
+
+| Method | Path | Akses | Keterangan |
+| --- | --- | --- | --- |
+| `GET` | `/login` | Guest | Form login |
+| `POST` | `/login` | Guest | Autentikasi |
+| `GET` | `/pos` | `kasir`, `admin_cabang` | POS |
+| `POST` | `/pos/checkout` | `kasir`, `admin_cabang` | Checkout |
+| `GET` | `/admin-cabang/dashboard` | `admin_cabang` | Dashboard cabang aktif |
+| `GET` | `/admin/stok` | `admin_cabang` | Daftar/pencarian/filter stok |
+| `POST` | `/admin/stok/masuk` | `admin_cabang` | Tambah stok cabang aktif |
+| `POST` | `/logout` | Login | Logout |
+
+Route admin pusat belum tersedia. Route `/up` adalah endpoint health check Laravel.
 
 ## Persyaratan Windows
 
@@ -98,6 +167,7 @@ APP_ENV=local
 APP_DEBUG=true
 APP_URL=http://127.0.0.1:8000
 
+APP_NODE=malang
 DB_CONNECTION=sqlsrv_malang
 
 DB_HOST_PUSAT=alamat-server-pusat
@@ -119,7 +189,15 @@ DB_USERNAME_MALANG=pengguna_aplikasi
 DB_PASSWORD_MALANG=password-lokal
 ```
 
-`DB_CONNECTION=sqlsrv_malang` penting untuk menjalankan aplikasi cabang Malang: model aplikasi sudah menetapkan koneksi tersebut secara langsung, sedangkan beberapa komponen Laravel seperti session, queue, dan migration bawaan menggunakan koneksi default. Jika ingin memakai SQLite untuk test atau eksperimen, konfigurasi koneksi model juga perlu disesuaikan—mengubah `DB_CONNECTION` saja tidak mengalihkan model-model tersebut.
+Sesuaikan pasangan `APP_NODE` dan `DB_CONNECTION` untuk setiap instalasi:
+
+| Instalasi | `APP_NODE` | `DB_CONNECTION` |
+| --- | --- | --- |
+| Pusat | `pusat` | `sqlsrv_pusat` |
+| Cabang Malang | `malang` | `sqlsrv_malang` |
+| Cabang Surabaya | `surabaya` | `sqlsrv_surabaya` |
+
+Kedua nilai harus mengarah ke database node yang sama. Aplikasi dan migrasi menggunakan koneksi default tersebut; jangan hanya memberi opsi `--database` yang berbeda dengan `DB_CONNECTION`, karena migrasi node juga membaca `APP_NODE` dan dapat mengarah ke koneksi yang salah. Setelah mengubah `.env`, jalankan `php artisan config:clear`.
 
 Jangan mengirim file `.env` ke Git atau membagikan password. Untuk server produksi, gunakan `APP_ENV=production`, `APP_DEBUG=false`, kredensial SQL Server khusus aplikasi dengan hak akses minimum, HTTPS, dan secret yang berbeda dari lingkungan lokal.
 
@@ -127,30 +205,24 @@ Jangan mengirim file `.env` ke Git atau membagikan password. Untuk server produk
 
 - Pastikan SQL Server berjalan dan database yang dituju sudah dibuat.
 - Pastikan TCP/IP, firewall, nama host, port, username, dan password cocok dengan `.env`.
-- Untuk pengembangan satu cabang, fokuskan koneksi pada database Malang. Nama database pusat dan Surabaya pada konfigurasi belum berarti data sudah tersambung atau tersinkronisasi.
+- Pastikan `.env` telah memilih pasangan node/koneksi yang benar sebelum migration atau seeder dijalankan.
 - Jalankan migration hanya setelah memastikan database dan backup yang benar. Migration mengubah struktur database, bukan menggantikan backup.
 
 ```powershell
-php artisan migrate:status --database=sqlsrv_malang
-php artisan migrate --database=sqlsrv_malang
+php artisan config:clear
+php artisan migrate:status
+php artisan migrate
 ```
 
-Jika migration terhenti karena tabel atau kolom lama berbeda, periksa skema aktual terlebih dahulu. Jangan langsung menjalankan `migrate:fresh`, `db:wipe`, atau menghapus database—perintah tersebut dapat menghilangkan data.
+Perintah di atas berlaku untuk node yang dipilih di `.env`. Ulangi pada tiap database dengan mengatur `APP_NODE` dan `DB_CONNECTION` yang cocok. Periksa rencana/skema dan backup sebelum menjalankan migration pada database bersama. Jangan menjalankan `migrate:fresh`, `db:wipe`, atau menghapus tabel pada database berisi data tanpa persetujuan dan backup yang dapat dipulihkan.
 
 ### 4. Isi data contoh
 
 ```powershell
-php artisan db:seed --database=sqlsrv_malang
+php artisan db:seed
 ```
 
-Seeder membuat contoh cabang Malang, kategori, produk, stok awal, pegawai, dan akun. Nilai login contoh saat ini:
-
-| Role | Username | Password awal |
-| --- | --- | --- |
-| Kasir | `kasir_mlg` | `password123` |
-| Admin cabang | `admin_mlg` | `password123` |
-
-Akun tersebut hanya untuk pengembangan lokal. Ganti password sebelum pemakaian nyata dan jangan gunakan akun seed sebagai akun produksi.
+Seeder membaca `APP_NODE`: pusat memasukkan katalog/cabang dan akun admin pusat; cabang memasukkan data cabang lokal, katalog lokal, stok awal, pegawai, akun, serta transaksi demo. Seeder menggunakan `updateOrCreate`/`firstOrCreate` untuk data yang didukung agar dapat dijalankan berulang, tetapi tetap jalankan hanya setelah memastikan node dan database sudah benar.
 
 ### 5. Build dan jalankan
 
@@ -174,27 +246,36 @@ Terminal kedua:
 npm run dev
 ```
 
-Buka `http://127.0.0.1:8000`. Halaman `/` mengalihkan pengguna ke `/login`; kasir yang berhasil login diarahkan ke `/pos`.
+Buka `http://127.0.0.1:8000`. Halaman `/` mengalihkan pengguna ke `/login`; kasir diarahkan ke `/pos`, admin cabang ke dashboard cabang. Role admin pusat saat ini diarahkan ke `/admin-pusat/dashboard`, tetapi halaman tersebut belum dibuat.
 
-Jalankan test:
+Jalankan test fitur dan unit menggunakan SQLite test yang sudah dikonfigurasi di `phpunit.xml`:
 
 ```powershell
-php artisan test
+php artisan test --compact
 ```
 
 ## Keterbatasan yang perlu dibereskan sebelum produksi
 
 Kondisi berikut terlihat pada implementasi saat ini dan harus diperlakukan sebagai pekerjaan lanjutan, bukan fitur yang sudah tersedia:
 
-- Seluruh model dan checkout masih menggunakan koneksi Malang; `id_cabang` checkout juga masih ditetapkan ke `MLG`.
-- Relasi stok produk belum memilih cabang. Jika produk yang sama ada pada beberapa cabang, pembacaan atau pengurangan stok perlu selalu memakai pasangan `id_cabang` dan `id_produk`.
-- Form checkout mengirim harga dan total dari browser. Server perlu mengambil harga dari database, menghitung ulang total, memvalidasi jumlah dan stok, lalu mengurangi stok secara atomik agar nilai yang dimanipulasi atau checkout bersamaan tidak menyebabkan stok/total keliru.
-- Login `admin_cabang` diarahkan ke `/dashboard-cabang`, tetapi route/dashboard tersebut belum tersedia di route saat ini.
-- Belum ada API antar-cabang, outbox transaksi, job sinkronisasi, penanda status sinkronisasi, atau penanganan koneksi terputus.
-- Koneksi pusat dan cabang lain baru berupa konfigurasi; belum digunakan oleh model atau proses sinkronisasi.
-- Session dan queue bawaan dikonfigurasi menggunakan database. Pastikan migration tabel pendukungnya dijalankan pada koneksi yang sesuai, atau pilih backend session/queue yang memang disediakan dan dipantau.
+- `PosController::store` masih memulai transaksi pada `sqlsrv_malang`, menggunakan ID cabang `MLG`, dan membentuk ID/faktur dengan asumsi Malang. Sesuaikan koneksi dan identitas cabang dengan konfigurasi aktif sebelum menjalankan checkout di Surabaya.
+- Checkout menerima detail produk, harga, total, dan jumlah dari browser. Ambil harga dari database di server, hitung ulang total, validasi jumlah/stok, dan kurangi stok secara atomik di dalam transaksi yang sama.
+- Relasi `Produk::stok()` belum dibatasi oleh `id_cabang`. Pastikan query stok selalu menggunakan cabang aktif selain ID produk, terutama jika model diperluas untuk membaca lebih dari satu koneksi.
+- `SyncProductService` saat ini hanya prototipe pusat-ke-Malang; ia belum mengirim katalog ke Surabaya, belum terhubung ke route/job, dan belum memiliki pengujian integrasi.
+- Belum ada pengiriman transaksi ke pusat, outbox/inbox, deduplikasi/idempotensi, retry/backoff, penanganan offline, atau pemantauan status sinkronisasi.
+- Dashboard admin pusat belum dibuat meskipun autentikasi admin pusat sudah tersedia.
+- Skema belum memiliki harga modal; laba tidak dapat dihitung secara akurat sampai biaya produk dicatat dan sumber perhitungannya ditentukan.
+- Session, cache, dan queue default memakai backend database menurut `.env.example`. Migration tabel Laravel pendukung dapat membuat tabel internal selain tabel bisnis; pastikan koneksi/backendnya sesuai kebutuhan deployment.
 
 Selesaikan celah validasi, otorisasi, idempotensi, audit, dan pemulihan data sebelum aplikasi dipakai untuk transaksi riil.
+
+## Prioritas pekerjaan untuk kontributor berikutnya
+
+1. Mulai dari membuat checkout node-aware: gunakan koneksi default dan identitas cabang dari konfigurasi, validasi ulang semua detail di server, lalu kurangi stok dengan kondisi `id_cabang` dan `id_produk` secara atomik.
+2. Tambahkan test feature untuk checkout valid, stok tidak cukup, harga/total yang dimanipulasi, dan konfigurasi kedua cabang. Gunakan database test SQLite; jangan menjalankan test terhadap SQL Server bersama.
+3. Lengkapi sinkronisasi katalog untuk Malang dan Surabaya, tetapkan cara menjalankannya (command/job/API), dan uji kegagalan/retry. Jangan sinkronkan stok fisik pusat.
+4. Buat dashboard dan route admin pusat untuk mengelola master serta membaca `RekapTransaksi`.
+5. Setelah kepemilikan data dan kontrak API disepakati, rancang sinkronisasi transaksi dengan outbox/inbox, idempotensi, autentikasi cabang, dan monitoring.
 
 ## Rancangan tujuan: pusat terhubung ke banyak cabang
 

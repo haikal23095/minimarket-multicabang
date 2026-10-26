@@ -4,20 +4,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Kasir - Cabang Malang</title>
+    <title>POS Kasir - Cabang {{ data_get(config('app.branch'), 'name', 'Aktif') }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 
 <body class="bg-slate-100 h-screen flex flex-col overflow-hidden">
+    @if (auth()->user()->role === 'admin_cabang')
+        <div class="flex h-screen flex-col overflow-hidden lg:flex-row">
+            <aside id="admin-sidebar" class="flex w-full shrink-0 flex-col gap-4 bg-slate-900 p-4 text-white lg:h-screen lg:w-72 lg:gap-8 lg:p-6">
+                <div>
+                    <p class="text-sm font-semibold uppercase tracking-[0.2em] text-blue-300">Minimarket</p>
+                    <h1 class="mt-2 text-2xl font-bold">Admin Cabang</h1>
+                </div>
+
+                <nav class="flex flex-wrap gap-2 lg:flex-col" aria-label="Navigasi admin cabang">
+                    <a href="{{ route('admin.cabang.dashboard') }}"
+                        class="rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white">
+                        Dashboard
+                    </a>
+                    <a href="{{ route('admin.stok.index') }}"
+                        class="rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white">
+                        Manajemen Stok
+                    </a>
+                    <a href="{{ route('pos.index') }}" aria-current="page"
+                        class="rounded-lg bg-white/10 px-4 py-3 text-sm font-semibold text-white">
+                        Kasir POS
+                    </a>
+                </nav>
+
+                <div class="mt-auto hidden rounded-xl border border-white/10 bg-white/5 p-4 lg:block">
+                    <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Cabang aktif</p>
+                    <p class="mt-2 text-lg font-semibold">{{ data_get(config('app.branch'), 'name', 'Cabang') }}</p>
+                    <p class="mt-1 font-mono text-xs text-slate-400">
+                        {{ data_get(config('app.branch'), 'id', '') }}
+                    </p>
+                </div>
+            </aside>
+
+            <main class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    @endif
+
     <!-- Navbar -->
-    <header class="bg-blue-600 text-white px-6 py-3 flex justify-between items-center shadow-md">
-        <div class="flex items-center space-x-3">
+    <header class="bg-blue-600 text-white px-6 py-3 flex flex-wrap justify-between items-center gap-3 shadow-md">
+        <div class="flex items-center gap-3">
+            @if (auth()->user()->role === 'admin_cabang')
+                <button type="button" data-sidebar-toggle aria-controls="admin-sidebar" aria-expanded="true"
+                    aria-label="Tutup menu navigasi"
+                    class="rounded-lg bg-blue-800 p-2 text-white hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-white">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            @endif
             <h1 class="text-lg font-bold">Minimarket POS</h1>
-            <span class="bg-blue-800 text-xs px-2 py-1 rounded">Cabang Malang</span>
+            <span class="bg-blue-800 text-xs px-2 py-1 rounded">
+                Cabang {{ data_get(config('app.branch'), 'name', 'Aktif') }}
+            </span>
         </div>
-        <div class="flex items-center space-x-4">
-            <span class="text-sm font-medium">Kasir: {{ auth()->user()->username }}</span>
+        <div class="flex items-center gap-4">
+            <span class="text-sm font-medium">
+                {{ auth()->user()->role === 'admin_cabang' ? 'Admin Cabang' : 'Kasir' }}:
+                {{ auth()->user()->username }}
+            </span>
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
                 <button type="submit"
@@ -29,7 +79,7 @@
     </header>
 
     <!-- Main Section -->
-    <div class="flex flex-1 overflow-hidden">
+    <div class="flex min-h-0 flex-1 overflow-hidden">
         <!-- Panel Produk (Kiri) -->
         <div class="w-2/3 p-4 overflow-y-auto border-r border-slate-200">
             <h2 class="text-lg font-semibold text-slate-800 mb-3">Daftar Produk</h2>
@@ -84,8 +134,26 @@
         </div>
     </div>
 
+    @if (auth()->user()->role === 'admin_cabang')
+            </main>
+        </div>
+    @endif
+
     <!-- Script Interaksi Kasir -->
     <script>
+        const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                const sidebar = document.getElementById(sidebarToggle.getAttribute('aria-controls'));
+                const isExpanded = sidebarToggle.getAttribute('aria-expanded') === 'true';
+
+                sidebar.style.display = isExpanded ? 'none' : '';
+                sidebarToggle.setAttribute('aria-expanded', String(!isExpanded));
+                sidebarToggle.setAttribute('aria-label', isExpanded ? 'Buka menu navigasi' : 'Tutup menu navigasi');
+            });
+        }
+
         let cart = [];
         let total = 0;
 
