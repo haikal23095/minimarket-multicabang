@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Minimarket Cabang Malang</title>
+    <title>Login - Minimarket {{ config('app.branch.name') ?? 'Pusat' }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex items-center justify-center">
     <div class="bg-white p-8 rounded-xl shadow-md w-full max-w-md border border-slate-200">
         <div class="text-center mb-6">
             <h1 class="text-2xl font-bold text-slate-800">Minimarket POS</h1>
-            <p class="text-slate-500 text-sm">Cabang Malang</p>
+            <p class="text-slate-500 text-sm">{{ config('app.branch.name') ?? 'Pusat' }}</p>
         </div>
 
         @if ($errors->any())

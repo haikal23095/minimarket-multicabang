@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\AdminCabangController;
+use App\Http\Controllers\AdminPusat\KategoriController;
+use App\Http\Controllers\AdminPusat\ProdukController;
+use App\Http\Controllers\AdminPusatController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\StokController;
@@ -19,6 +22,15 @@ Route::middleware('guest')->group(function () {
 // Authenticated Routes
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::middleware(['role:admin_pusat', 'master-data.write'])
+        ->prefix('admin-pusat')
+        ->name('admin.pusat.')
+        ->group(function () {
+            Route::get('/dashboard', [AdminPusatController::class, 'index'])->name('dashboard');
+            Route::resource('produk', ProdukController::class)->except('show');
+            Route::resource('kategori', KategoriController::class)->except('show');
+        });
 
     Route::middleware('role:kasir,admin_cabang')->group(function () {
         Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
