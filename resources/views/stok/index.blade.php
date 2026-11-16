@@ -30,6 +30,10 @@
                     class="rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white">
                     Kasir POS
                 </a>
+                <a href="{{ route('pos.riwayat') }}"
+                    class="rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white">
+                    Riwayat Transaksi
+                </a>
             </nav>
 
             <div class="mt-auto hidden rounded-xl border border-white/10 bg-white/5 p-4 lg:block">
@@ -173,7 +177,12 @@
                                         <tr class="hover:bg-slate-50/70">
                                             <td class="px-5 py-4">
                                                 <p class="font-semibold text-slate-800">{{ $itemStok->nama_produk }}</p>
-                                                <p class="mt-1 font-mono text-xs text-slate-500">{{ $itemStok->id_produk }}</p>
+                                                <p class="mt-1 font-mono text-xs text-slate-500">
+                                                    {{ $itemStok->id_produk }}
+                                                    @if (!empty($itemStok->nama_kategori))
+                                                        <span class="text-slate-400">&bull;</span> {{ $itemStok->nama_kategori }}
+                                                    @endif
+                                                </p>
                                             </td>
                                             <td class="px-5 py-4 font-semibold">
                                                 {{ number_format($itemStok->jumlah_stok, 0, ',', '.') }} unit

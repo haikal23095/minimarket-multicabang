@@ -35,6 +35,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:kasir,admin_cabang')->group(function () {
         Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
         Route::post('/pos/checkout', [PosController::class, 'store'])->name('pos.checkout');
+        Route::get('/pos/riwayat', [PosController::class, 'riwayat'])->name('pos.riwayat');
+        Route::get('/pos/nota/{id}', [PosController::class, 'showNota'])->name('pos.nota');
     });
 
     Route::middleware('role:admin_cabang')->prefix('admin/stok')->name('admin.stok.')->group(function () {

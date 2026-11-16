@@ -20,32 +20,62 @@ class StokController extends Controller
             'status' => ['nullable', 'in:all,low,normal'],
         ]);
 
-        $ringkasanStok = DB::table('Stok')
-            ->where('id_cabang', $branch['id'])
-            ->selectRaw(
-                'COUNT(*) as jumlah_produk, COALESCE(SUM(jumlah_stok), 0) as total_stok, COALESCE(SUM(CASE WHEN jumlah_stok <= ? THEN 1 ELSE 0 END), 0) as produk_hampir_habis',
-                [self::LOW_STOCK_THRESHOLD],
-            )
-            ->first();
+        $usesView = DB::connection()->getDriverName() === 'sqlsrv';
 
-        $stokQuery = DB::table('Stok')
-            ->join('Produk', 'Produk.id_produk', '=', 'Stok.id_produk')
-            ->where('Stok.id_cabang', $branch['id'])
-            ->select('Stok.id_produk', 'Produk.nama_produk', 'Stok.jumlah_stok')
-            ->when($filters['search'] ?? null, function (Builder $query, string $search): void {
-                $query->where(function (Builder $query) use ($search): void {
-                    $query->where('Produk.nama_produk', 'like', '%'.$search.'%')
-                        ->orWhere('Stok.id_produk', 'like', '%'.$search.'%');
-                });
-            })
-            ->when(($filters['status'] ?? 'all') === 'low', function (Builder $query): void {
-                $query->where('Stok.jumlah_stok', '<=', self::LOW_STOCK_THRESHOLD);
-            })
-            ->when(($filters['status'] ?? 'all') === 'normal', function (Builder $query): void {
-                $query->where('Stok.jumlah_stok', '>', self::LOW_STOCK_THRESHOLD);
-            })
-            ->orderBy('Stok.jumlah_stok')
-            ->orderBy('Produk.nama_produk');
+        if ($usesView) {
+            $ringkasanStok = DB::table('vw_MonitoringStokCabang')
+                ->where('id_cabang', $branch['id'])
+                ->selectRaw(
+                    'COUNT(*) as jumlah_produk, COALESCE(SUM(jumlah_stok), 0) as total_stok, COALESCE(SUM(CASE WHEN jumlah_stok <= ? THEN 1 ELSE 0 END), 0) as produk_hampir_habis',
+                    [self::LOW_STOCK_THRESHOLD],
+                )
+                ->first();
+
+            $stokQuery = DB::table('vw_MonitoringStokCabang')
+                ->where('id_cabang', $branch['id'])
+                ->select('id_produk', 'nama_produk', 'jumlah_stok', 'nama_kategori', 'status_stok')
+                ->when($filters['search'] ?? null, function (Builder $query, string $search): void {
+                    $query->where(function (Builder $query) use ($search): void {
+                        $query->where('nama_produk', 'like', '%'.$search.'%')
+                            ->orWhere('id_produk', 'like', '%'.$search.'%');
+                    });
+                })
+                ->when(($filters['status'] ?? 'all') === 'low', function (Builder $query): void {
+                    $query->where('jumlah_stok', '<=', self::LOW_STOCK_THRESHOLD);
+                })
+                ->when(($filters['status'] ?? 'all') === 'normal', function (Builder $query): void {
+                    $query->where('jumlah_stok', '>', self::LOW_STOCK_THRESHOLD);
+                })
+                ->orderBy('jumlah_stok')
+                ->orderBy('nama_produk');
+        } else {
+            $ringkasanStok = DB::table('Stok')
+                ->where('id_cabang', $branch['id'])
+                ->selectRaw(
+                    'COUNT(*) as jumlah_produk, COALESCE(SUM(jumlah_stok), 0) as total_stok, COALESCE(SUM(CASE WHEN jumlah_stok <= ? THEN 1 ELSE 0 END), 0) as produk_hampir_habis',
+                    [self::LOW_STOCK_THRESHOLD],
+                )
+                ->first();
+
+            $stokQuery = DB::table('Stok')
+                ->join('Produk', 'Produk.id_produk', '=', 'Stok.id_produk')
+                ->where('Stok.id_cabang', $branch['id'])
+                ->select('Stok.id_produk', 'Produk.nama_produk', 'Stok.jumlah_stok')
+                ->when($filters['search'] ?? null, function (Builder $query, string $search): void {
+                    $query->where(function (Builder $query) use ($search): void {
+                        $query->where('Produk.nama_produk', 'like', '%'.$search.'%')
+                            ->orWhere('Stok.id_produk', 'like', '%'.$search.'%');
+                    });
+                })
+                ->when(($filters['status'] ?? 'all') === 'low', function (Builder $query): void {
+                    $query->where('Stok.jumlah_stok', '<=', self::LOW_STOCK_THRESHOLD);
+                })
+                ->when(($filters['status'] ?? 'all') === 'normal', function (Builder $query): void {
+                    $query->where('Stok.jumlah_stok', '>', self::LOW_STOCK_THRESHOLD);
+                })
+                ->orderBy('Stok.jumlah_stok')
+                ->orderBy('Produk.nama_produk');
+        }
 
         return view('stok.index', [
             'stok' => $stokQuery->paginate(15)->withQueryString(),
@@ -68,12 +98,20 @@ class StokController extends Controller
             'jumlah_masuk' => ['required', 'integer', 'min:1', 'max:1000000'],
         ]);
 
-        $stokDiperbarui = DB::table('Stok')
-            ->where('id_cabang', $branch['id'])
-            ->where('id_produk', $validated['id_produk'])
-            ->increment('jumlah_stok', $validated['jumlah_masuk']);
+        if (DB::connection()->getDriverName() === 'sqlsrv') {
+            DB::statement('EXEC dbo.usp_CatatStokMasuk @id_cabang = ?, @id_produk = ?, @jumlah_masuk = ?', [
+                $branch['id'],
+                $validated['id_produk'],
+                $validated['jumlah_masuk'],
+            ]);
+        } else {
+            $stokDiperbarui = DB::table('Stok')
+                ->where('id_cabang', $branch['id'])
+                ->where('id_produk', $validated['id_produk'])
+                ->increment('jumlah_stok', $validated['jumlah_masuk']);
 
-        abort_if($stokDiperbarui === 0, 404);
+            abort_if($stokDiperbarui === 0, 404);
+        }
 
         return redirect()
             ->route('admin.stok.index')
